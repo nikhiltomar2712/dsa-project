@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Ride-Sharing Platform Simulator</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel-bg: #1e293b;
+            --border: #334155;
+            --text: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent2: #a78bfa;
+            --green: #4ade80;
+            --orange: #fb923c;
+            --red: #f87171;
+            --yellow: #fbbf24;
+            --card: #1e293b;
+            --hover: #2d3a4f;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        #map-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+        canvas {
+            border-radius: 16px;
+            background: #0b1120;
+            box-shadow: 0 0 60px rgba(56, 189, 248, 0.08), 0 0 120px rgba(56, 189, 248, 0.03);
+            cursor: crosshair;
+        }
+        #sidebar {
+            width: 420px;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        #sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        #sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        h2 .icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .card h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        #search-input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #0f172a;
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+        #search-input:focus {
+            border-color: var(--accent);
+        }
+        #autocomplete-list {
+            list-style: none;
+            max-height: 150px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #0f172a;
+            margin-top: 4px;
+            display: none;
+        }
+        #autocomplete-list li {
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+        #autocomplete-list li:hover {
+            background: var(--hover);
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.85rem;
+        }
+        .stat-row .val {
+            font-weight: 600;
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--hover);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #3b4a62;
+            border-color: #5a6d84;
+        }
+        button.accent {
+            background: var(--accent);
+            color: #0f172a;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+        button.accent:hover {
+            background: #7dd3fc;
+        }
+        button.danger {
+            background: transparent;
+            border-color: var(--red);
+            color: var(--red);
+        }
+        button.danger:hover {
+            background: rgba(248, 113, 113, 0.15);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        .badge-available {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--green);
+        }
+        .badge-busy {
+            background: rgba(251, 146, 60, 0.2);
+            color: var(--orange);
+        }
+        .badge-enroute {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent);
+        }
+        #legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        #legend span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            display: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map-container">
+        <canvas id="mapCanvas"></canvas>
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <div id="sidebar">
+        <h2>
+            <span class="icon" style="background:rgba(56,189,248,0.2);">🚗</span>
+            Ride-Share Simulator
+        </h2>
+
+        <div class="card">
+            <h3>🔍 Location Search (Trie Autocomplete)</h3>
+            <input type="text" id="search-input" placeholder="Search locations... (e.g. 'Cen', 'Air')" autocomplete="off">
+            <ul id="autocomplete-list"></ul>
+        </div>
+
+        <div class="card">
+            <h3>📊 Real-Time Analytics</h3>
+            <div class="stat-row"><span>Total Rides Completed</span><span class="val" id="stat-completed">0</span></div>
+            <div class="stat-row"><span>Avg Wait Time (s)</span><span class="val" id="stat-wait">—</span></div>
+            <div class="stat-row"><span>Avg Ride Time (s)</span><span class="val" id="stat-ride">—</span></div>
+            <div class="stat-row"><span>Driver Utilization</span><span class="val" id="stat-util">0%</span></div>
+            <div class="stat-row"><span>Active Drivers</span><span class="val" id="stat-active-drivers">0</span></div>
+            <div class="stat-row"><span>Available Drivers</span><span class="val" id="stat-available">0</span></div>
+            <div class="stat-row"><span>Pending Riders</span><span class="val" id="stat-pending">0</span></div>
+            <div class="stat-row"><span>LRU Cache Hit Rate</span><span class="val" id="stat-cache-hit">0%</span></div>
+            <div class="stat-row"><span>Closed Roads</span><span class="val" id="stat-closed-roads">0</span></div>
+        </div>
+
+        <div class="card">
+            <h3>🎛️ Controls</h3>
+            <div class="slider-row">
+                <span>Sim Speed</span>
+                <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="2">
+                <span id="speed-label">2x</span>
+            </div>
+            <div class="slider-row" style="margin-top:8px;">
+                <span>Rider Spawn Rate</span>
+                <input type="range" id="spawn-rate-slider" min="1" max="10" step="1" value="4">
+                <span id="spawn-rate-label">4/min</span>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="accent" id="btn-add-driver">+ Add Driver</button>
+                <button id="btn-spawn-rider">Spawn Rider</button>
+                <button class="danger" id="btn-toggle-closure">🛑 Toggle Road Closure Mode</button>
+                <button id="btn-reset">Reset All</button>
+            </div>
+            <p style="font-size:0.7rem;color:var(--text-secondary);margin-top:8px;">
+                💡 In closure mode, click a road on the map to close/reopen it (Union-Find).
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>📋 Active Rides</h3>
+            <div id="active-rides-list" style="max-height:180px;overflow-y:auto;font-size:0.78rem;">
+                <span style="color:var(--text-secondary);">No active rides...</span>
+            </div>
+        </div>
+
+        <div id="legend">
+            <span><span class="legend-dot" style="background:#4ade80;"></span> Available Driver</span>
+            <span><span class="legend-dot" style="background:#fb923c;"></span> En Route</span>
+            <span><span class="legend-dot" style="background:#38bdf8;"></span> With Rider</span>
+            <span><span class="legend-dot" style="background:#fbbf24;"></span> Waiting Rider</span>
+            <span style="color:#f87171;">━ Closed Road</span>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // DATA STRUCTURES
+        // ============================================================
+
+        // --- Min-Heap (Priority Queue) ---
+        // Time: O(log n) insert/extract, O(1) peek
+        // Space: O(n)
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+            size() { return this.heap.length; }
+            peek() { return this.heap[0] || null; }
+            insert(item) {
+                this.heap.push(item);
+                this._bubbleUp(this.heap.length - 1);
+            }
+            extract() {
+                if (this.heap.length === 0) return null;
+                const min = this.heap[0];
+                const last = this.heap.pop();
+                if (this.heap.length > 0) {
+                    this.heap[0] = last;
+                    this._sinkDown(0);
+                }
+                return min;
+            }
+            _bubbleUp(idx) {
+                while (idx > 0) {
+                    const parent = Math.floor((idx - 1) / 2);
+                    if (this.heap[idx].key < this.heap[parent].key) {
+                        [this.heap[idx], this.heap[parent]] = [this.heap[parent], this.heap[idx]];
+                        idx = parent;
+                    } else break;
+                }
+            }
+            _sinkDown(idx) {
+                const n = this.heap.length;
+                while (true) {
+                    let smallest = idx;
+                    const left = 2 * idx + 1;
+                    const right = 2 * idx + 2;
+                    if (left < n && this.heap[left].key < this.heap[smallest].key) smallest = left;
+                    if (right < n && this.heap[right].key < this.heap[smallest].key) smallest = right;
+                    if (smallest !== idx) {
+                        [this.heap[idx], this.heap[smallest]] = [this.heap[smallest], this.heap[idx]];
+                        idx = smallest;
+                    } else break;
+                }
+            }
+        }
+
+        // --- Trie for Autocomplete ---
+        // Time: O(k) insert, O(p) search where k=word length, p=prefix length
+        // Space: O(total characters stored)
+        class TrieNode {
+            constructor() {
+                this.children = {};
+                this.isEnd = false;
+                this.data = null; // stores the location object
+            }
+        }
+        class Trie {
+            constructor() {
+                this.root = new TrieNode();
+            }
+            insert(word, data) {
+                let node = this.root;
+                for (const ch of word.toLowerCase()) {
+                    if (!node.children[ch]) node.children[ch] = new TrieNode();
+                    node = node.children[ch];
+                }
+                node.isEnd = true;
+                node.data = data;
+            }
+            searchPrefix(prefix) {
+                let node = this.root;
+                for (const ch of prefix.toLowerCase()) {
+                    if (!node.children[ch]) return [];
+                    node = node.children[ch];
+                }
+                return this._collectAll(node);
+            }
+            _collectAll(node) {
+                const results = [];
+                if (node.isEnd) results.push(node.data);
+                for (const ch in node.children) {
+                    results.push(...this._collectAll(node.children[ch]));
+                }
+                return results;
+            }
+        }
+
+        // --- LRU Cache ---
+        // Time: O(1) get/put using Map (preserves insertion order)
+        // Space: O(capacity)
+        class LRUCache {
+            constructor(capacity = 200) {
+                this.capacity = capacity;
+                this.map = new Map();
+                this.hits = 0;
+                this.misses = 0;
+            }
+            get(key) {
+                if (this.map.has(key)) {
+                    const val = this.map.get(key);
+                    this.map.delete(key);
+                    this.map.set(key, val);
+                    this.hits++;
+                    return val;
+                }
+                this.misses++;
+                return null;
+            }
+            put(key, value) {
+                if (this.map.has(key)) this.map.delete(key);
+                else if (this.map.size >= this.capacity) {
+                    const firstKey = this.map.keys().next().value;
+                    this.map.delete(firstKey);
+                }
+                this.map.set(key, value);
+            }
+            hitRate() {
+                const total = this.hits + this.misses;
+                return total === 0 ? 0 : (this.hits / total * 100);
+            }
+            clear() {
+                this.map.clear();
+                this.hits = 0;
+                this.misses = 0;
+            }
+        }
+
+        // --- Fenwick Tree (Binary Indexed Tree) for traffic density ---
+        // Time: O(log n) update/query
+        // Space: O(n)
+        class FenwickTree {
+            constructor(size) {
+                this.n = size;
+                this.tree = new Array(size + 1).fill(0);
+                this.baseValues = new Array(size).fill(1.0); // base density = 1.0
+            }
+            update(index, delta) {
+                // index is 0-based; tree is 1-based
+                const prev = this.baseValues[index];
+                this.baseValues[index] = Math.max(0.5, Math.min(3.0, prev + delta));
+                const actualDelta = this.baseValues[index] - prev;
+                let i = index + 1;
+                while (i <= this.n) {
+                    this.tree[i] += actualDelta;
+                    i += i & -i;
+                }
+            }
+            setDensity(index, value) {
+                const prev = this.baseValues[index];
+                const clamped = Math.max(0.5, Math.min(3.0, value));
+                this.baseValues[index] = clamped;
+                const delta = clamped - prev;
+                let i = index + 1;
+                while (i <= this.n) {
+                    this.tree[i] += delta;
+                    i += i & -i;
+                }
+            }
+            prefixSum(index) {
+                let sum = 0;
+                let i = index + 1;
+                while (i > 0) {
+                    sum += this.tree[i];
+                    i -= i & -i;
+                }
+                return sum;
+            }
+            rangeQuery(left, right) {
+                if (left > right) return 0;
+                return this.prefixSum(right) - (left > 0 ? this.prefixSum(left - 1) : 0);
+            }
+            getDensity(index) {
+                return this.baseValues[index];
+            }
+            reset() {
+                this.tree = new Array(this.n + 1).fill(0);
+                this.baseValues = new Array(this.n).fill(1.0);
+                for (let i = 0; i < this.n; i++) {
+                    let j = i + 1;
+                    while (j <= this.n) {
+                        this.tree[j] += 1.0;
+                        j += j & -j;
+                    }
+                }
+            }
+        }
+
+        // --- Union-Find (Disjoint Set Union) for road closures ---
+        // Time: O(α(n)) ≈ O(1) amortized with path compression + union by rank
+        // Space: O(n)
+        class UnionFind {
+            constructor(n) {
+                this.parent = Array.from({ length: n }, (_, i) => i);
+                this.rank = new Array(n).fill(0);
+            }
+            find(x) {
+                if (this.parent[x] !== x) {
+                    this.parent[x] = this.find(this.parent[x]); // path compression
+                }
+                return this.parent[x];
+            }
+            union(a, b) {
+                const ra = this.find(a);
+                const rb = this.find(b);
+                if (ra === rb) return false;
+                if (this.rank[ra] < this.rank[rb]) this.parent[ra] = rb;
+                else if (this.rank[ra] > this.rank[rb]) this.parent[rb] = ra;
+                else { this.parent[rb] = ra;
+                    this.rank[ra]++; }
+                return true;
+            }
+            connected(a, b) { return this.find(a) === this.find(b); }
+            clone() {
+                const uf = new UnionFind(this.parent.length);
+                uf.parent = [...this.parent];
+                uf.rank = [...this.rank];
+                return uf;
+            }
+        }
+
+        // --- Graph for City Road Network ---
+        // Uses adjacency list; supports Dijkstra's algorithm
+        class Graph {
+            constructor() {
+                this.nodes = []; // list of intersection objects {id, x, y, name}
+                this.adj = new Map(); // nodeId -> [{to, edgeId, baseDist}]
+                this.edges = []; // edgeId -> {from, to, baseDist}
+                this.nodeIdMap = new Map(); // name -> nodeId
+            }
+            addNode(id, x, y, name) {
+                this.nodes.push({ id, x, y, name });
+                this.adj.set(id, []);
+                this.nodeIdMap.set(name.toLowerCase(), id);
+            }
+            addEdge(fromId, toId, baseDist) {
+                const edgeId = this.edges.length;
+                this.adj.get(fromId).push({ to: toId, edgeId, baseDist });
+                this.adj.get(toId).push({ to: fromId, edgeId, baseDist }); // undirected
+                this.edges.push({ from: fromId, to: toId, baseDist });
+                return edgeId;
+            }
+            getNeighbors(nodeId) {
+                return this.adj.get(nodeId) || [];
+            }
+            // Dijkstra's Algorithm
+            // Time: O((V+E) log V) with min-heap
+            // Returns {dist: Map, prev: Map} from source node
+            dijkstra(sourceId, trafficDensities, closedEdges = new Set()) {
+                const dist = new Map();
+                const prev = new Map();
+                const visited = new Set();
+                const pq = new MinHeap();
+
+                dist.set(sourceId, 0);
+                pq.insert({ key: 0, nodeId: sourceId });
+
+                while (pq.size() > 0) {
+                    const { nodeId } = pq.extract();
+                    if (visited.has(nodeId)) continue;
+                    visited.add(nodeId);
+
+                    for (const { to, edgeId, baseDist } of this.getNeighbors(nodeId)) {
+                        if (closedEdges.has(edgeId)) continue;
+                        const trafficFactor = trafficDensities ? trafficDensities.getDensity(edgeId) : 1.0;
+                        const weight = baseDist * trafficFactor;
+                        const newDist = (dist.get(nodeId) || 0) + weight;
+                        if (newDist < (dist.get(to) || Infinity)) {
+                            dist.set(to, newDist);
+                            prev.set(to, { from: nodeId, edgeId });
+                            pq.insert({ key: newDist, nodeId: to });
+                        }
+                    }
+                }
+                return { dist, prev };
+            }
+            // Reconstruct path from prev map
+            reconstructPath(prev, destId) {
+                const path = [];
+                let curr = destId;
+                while (prev.has(curr)) {
+                    const { from, edgeId } = prev.get(curr);
+                    path.unshift({ from, to: curr, edgeId });
+                    curr = from;
+                }
+                return path;
+            }
+        }
+
+        // ============================================================
+        // CITY SETUP
+        // ============================================================
+        const GRID_ROWS = 6;
+        const GRID_COLS = 6;
+        const CANVAS_SIZE = 620;
+        const MARGIN = 50;
+        const SPACING_X = (CANVAS_SIZE - 2 * MARGIN) / (GRID_COLS - 1);
+        const SPACING_Y = (CANVAS_SIZE - 2 * MARGIN) / (GRID_ROWS - 1);
+
+        // Location names for the grid
+        const locationNames = [
+            ['Central Park', 'Times Square', 'Grand Central', 'Wall Street', 'Brooklyn Br', 'Battery Park'],
+            ['Upper East', 'Midtown East', 'Empire State', 'Union Square', 'SoHo District', 'Chinatown'],
+            ['Harlem North', 'Museum Mile', 'Bryant Park', 'Greenwich Vil', 'East Village', 'Lower East'],
+            ['Columbia Uni', 'Lincoln Center', 'Hells Kitchen', 'Chelsea Mkt', 'Meatpacking', 'Tribeca'],
+            ['Washington H', 'Hudson Yards', 'Penn Station', 'Flatiron', 'Gramercy', 'Financial Dt'],
+            ['Inwood', 'Riverside Pk', 'Port Authority', 'Madison Sq', 'Kips Bay', 'South Ferry'],
+        ];
+
+        const graph = new Graph();
+        const trie = new Trie();
+        const lruCache = new LRUCache(200);
+        const allIntersections = [];
+        const nodeIdToGrid = new Map(); // nodeId -> {row, col}
+
+        // Create nodes
+        let nodeIdCounter = 0;
+        for (let row = 0; row < GRID_ROWS; row++) {
+            for (let col = 0; col < GRID_COLS; col++) {
+                const x = MARGIN + col * SPACING_X;
+                const y = MARGIN + row * SPACING_Y;
+                const name = locationNames[row][col];
+                const id = nodeIdCounter++;
+                graph.addNode(id, x, y, name);
+                trie.insert(name, { id, name, row, col });
+                allIntersections.push({ id, x, y, name, row, col });
+                nodeIdToGrid.set(id, { row, col });
+            }
+        }
+
+        // Create edges (roads) - horizontal and vertical
+        const roadEdgeMap = new Map(); // "row-col-direction" -> edgeId
+        for (let row = 0; row < GRID_ROWS; row++) {
+            for (let col = 0; col < GRID_COLS; col++) {
+                const nodeId = row * GRID_COLS + col;
+                // Horizontal edge to right neighbor
+                if (col < GRID_COLS - 1) {
+                    const rightId = row * GRID_COLS + (col + 1);
+                    const dist = SPACING_X + (Math.random() - 0.5) * 30;
+                    const edgeId = graph.addEdge(nodeId, rightId, Math.round(dist));
+                    roadEdgeMap.set(`${row}-${col}-h`, edgeId);
+                }
+                // Vertical edge to bottom neighbor
+                if (row < GRID_ROWS - 1) {
+                    const bottomId = (row + 1) * GRID_COLS + col;
+                    const dist = SPACING_Y + (Math.random() - 0.5) * 30;
+                    const edgeId = graph.addEdge(nodeId, bottomId, Math.round(dist));
+                    roadEdgeMap.set(`${row}-${col}-v`, edgeId);
+                }
+            }
+        }
+
+        const totalEdges = graph.edges.length;
+        const trafficTree = new FenwickTree(totalEdges);
+        const closedEdges = new Set();
+        const unionFindAll = new UnionFind(graph.nodes.length);
+
+        // Initialize Union-Find with all edges connected
+        function rebuildUnionFind() {
+            const uf = new UnionFind(graph.nodes.length);
+            for (let i = 0; i < totalEdges; i++) {
+                if (!closedEdges.has(i)) {
+                    uf.union(graph.edges[i].from, graph.edges[i].to);
+                }
+            }
+            return uf;
+        }
+        let currentUF = rebuildUnionFind();
+
+        // ============================================================
+        // SIMULATION STATE
+        // ============================================================
+        const drivers = [];
+        const riders = []; // pending riders waiting for match
+        const activeRides = []; // {riderId, driverId, pickupNode, dropoffNode, phase:'enroute'|'withRider', path:[], pathIndex, progress}
+        let driverIdCounter = 0;
+        let riderIdCounter = 0;
+        let rideIdCounter = 0;
+        let totalCompletedRides = 0;
+        let totalWaitTime = 0;
+        let totalRideTime = 0;
+        let totalRideTimeSamples = 0;
+        let closureMode = false;
+        let simulationTime = 0;
+        let spawnIntervalId = null;
+
+        // Driver class
+        class Driver {
+            constructor(nodeId) {
+                this.id = driverIdCounter++;
+                this.nodeId = nodeId;
+                this.status = 'available'; // 'available' | 'enroute' | 'withRider'
+                this.currentEdgeId = null;
+                this.progressOnEdge = 0; // 0 to 1
+                this.rideId = null;
+                this.x = graph.nodes[nodeId].x;
+                this.y = graph.nodes[nodeId].y;
+                this.totalBusyTime = 0;
+                this.totalActiveTime = 0;
+            }
+        }
+
+        // Rider class (pending)
+        class Rider {
+            constructor(pickupNodeId, dropoffNodeId) {
+                this.id = riderIdCounter++;
+                this.pickupNodeId = pickupNodeId;
+                this.dropoffNodeId = dropoffNodeId;
+                this.requestTime = simulationTime;
+                this.matched = false;
+            }
+        }
+
+        // Active Ride
+        class ActiveRide {
+            constructor(rider, driver) {
+                this.rideId = rideIdCounter++;
+                this.riderId = rider.id;
+                this.driverId = driver.id;
+                this.pickupNodeId = rider.pickupNodeId;
+                this.dropoffNodeId = rider.dropoffNodeId;
+                this.phase = 'enroute'; // 'enroute' to pickup, then 'withRider' to dropoff
+                this.path = []; // list of {from, to, edgeId}
+                this.pathIndex = 0;
+                this.progressOnSegment = 0;
+                this.requestTime = rider.requestTime;
+                this.pickupTime = null;
+                this.dropoffTime = null;
+            }
+        }
+
+        // Initialize drivers
+        function createInitialDrivers(count) {
+            for (let i = 0; i < count; i++) {
+                const randomNodeId = Math.floor(Math.random() * graph.nodes.length);
+                const driver = new Driver(randomNodeId);
+                driver.x = graph.nodes[randomNodeId].x;
+                driver.y = graph.nodes[randomNodeId].y;
+                drivers.push(driver);
+            }
+        }
+
+        // ============================================================
+        // MATCHING ENGINE (Min-Heap based)
+        // ============================================================
+        function findNearestDriver(riderPickupNodeId) {
+            const availableDrivers = drivers.filter(d => d.status === 'available');
+            if (availableDrivers.length === 0) return null;
+
+            // Check LRU cache first
+            const cacheKey = `match_${riderPickupNodeId}_${availableDrivers.map(d=>d.nodeId).sort().join(',')}`;
+            const cached = lruCache.get(cacheKey);
+            if (cached !== null) return availableDrivers.find(d => d.id === cached) || null;
+
+            // Use Min-Heap to find driver with lowest ETA
+            const heap = new MinHeap();
+            const etaResults = [];
+
+            for (const driver of availableDrivers) {
+                const routeCacheKey = `route_${driver.nodeId}_${riderPickupNodeId}`;
+                let cachedRoute = lruCache.get(routeCacheKey);
+
+                let dist, path;
+                if (cachedRoute) {
+                    ({ dist, path } = cachedRoute);
+                } else {
+                    const result = graph.dijkstra(driver.nodeId, trafficTree, closedEdges);
+                    dist = result.dist.get(riderPickupNodeId) || Infinity;
+                    path = dist < Infinity ? graph.reconstructPath(result.prev, riderPickupNodeId) : [];
+                    lruCache.put(routeCacheKey, { dist, path });
+                }
+
+                if (dist < Infinity) {
+                    heap.insert({ key: dist, driverId: driver.id, dist, path });
+                    etaResults.push({ driverId: driver.id, dist });
+                }
+            }
+
+            if (heap.size() === 0) return null;
+
+            const best = heap.extract();
+            lruCache.put(cacheKey, best.driverId);
+            return {
+                driver: drivers.find(d => d.id === best.driverId),
+                eta: best.dist,
+                path: best.path,
+            };
+        }
+
+        function matchRider(rider) {
+            const result = findNearestDriver(rider.pickupNodeId);
+            if (!result) return false;
+
+            const { driver, path } = result;
+            driver.status = 'enroute';
+            driver.rideId = rideIdCounter;
+
+            const ride = new ActiveRide(rider, driver);
+            ride.path = path;
+            ride.pathIndex = 0;
+            ride.progressOnSegment = 0;
+
+            activeRides.push(ride);
+            rider.matched = true;
+            driver.rideId = ride.rideId;
+
+            // Increase traffic on path segments
+            for (const seg of path) {
+                const currentDensity = trafficTree.getDensity(seg.edgeId);
+                trafficTree.setDensity(seg.edgeId, currentDensity + 0.25);
+            }
+
+            return true;
+        }
+
+        // ============================================================
+        // SIMULATION LOOP
+        // ============================================================
+        function getNodePosition(nodeId) {
+            const node = graph.nodes[nodeId];
+            return { x: node.x, y: node.y };
+        }
+
+        function getEdgeEndpoints(edgeId) {
+            const edge = graph.edges[edgeId];
+            return {
+                from: getNodePosition(edge.from),
+                to: getNodePosition(edge.to),
+                fromId: edge.from,
+                toId: edge.to,
+            };
+        }
+
+        function updateSimulation(deltaTime) {
+            // deltaTime in simulation seconds (adjusted by speed)
+            simulationTime += deltaTime;
+
+            // Decay traffic density gradually
+            for (let i = 0; i < totalEdges; i++) {
+                const current = trafficTree.getDensity(i);
+                if (current > 1.0) {
+                    trafficTree.setDensity(i, current - 0.015 * deltaTime);
+                } else if (current < 1.0) {
+                    trafficTree.setDensity(i, Math.min(1.0, current + 0.01 * deltaTime));
+                }
+            }
+
+            // Update active rides
+            const completedRides = [];
+            for (const ride of activeRides) {
+                const driver = drivers.find(d => d.id === ride.driverId);
+                if (!driver) continue;
+
+                driver.totalActiveTime += deltaTime;
+                if (driver.status !== 'available') {
+                    driver.totalBusyTime += deltaTime;
+                }
+
+                if (ride.path.length === 0) {
+                    // Direct match (same node)
+                    if (ride.phase === 'enroute') {
+                        ride.phase = 'withRider';
+                        ride.pickupTime = simulationTime;
+                        const waitTime = ride.pickupTime - ride.requestTime;
+                        totalWaitTime += waitTime;
+                        // Calculate path to dropoff
+                        const cacheKey = `route_${ride.pickupNodeId}_${ride.dropoffNodeId}`;
+                        let cached = lruCache.get(cacheKey);
+                        if (cached) {
+                            ride.path = cached.path;
+                        } else {
+                            const result = graph.dijkstra(ride.pickupNodeId, trafficTree, closedEdges);
+                            ride.path = graph.reconstructPath(result.prev, ride.dropoffNodeId);
+                            lruCache.put(cacheKey, { dist: result.dist.get(ride.dropoffNodeId) || Infinity,
+                                path: ride.path });
+                        }
+                        ride.pathIndex = 0;
+                        ride.progressOnSegment = 0;
+                        driver.status = 'withRider';
+                    } else {
+                        // Complete ride
+                        ride.dropoffTime = simulationTime;
+                        totalRideTime += (ride.dropoffTime - ride.pickupTime);
+                        totalRideTimeSamples++;
+                        completedRides.push(ride);
+                        driver.status = 'available';
+                        driver.rideId = null;
+                        driver.nodeId = ride.dropoffNodeId;
+                        driver.x = graph.nodes[ride.dropoffNodeId].x;
+                        driver.y = graph.nodes[ride.dropoffNodeId].y;
+                        driver.currentEdgeId = null;
+                        driver.progressOnEdge = 0;
+                        totalCompletedRides++;
+                    }
+                    continue;
+                }
+
+                // Move along path
+                const currentSegment = ride.path[ride.pathIndex];
+                if (!currentSegment) {
+                    // Path exhausted
+                    if (ride.phase === 'enroute') {
+                        ride.phase = 'withRider';
+                        ride.pickupTime = simulationTime;
+                        const waitTime = ride.pickupTime - ride.requestTime;
+                        totalWaitTime += waitTime;
+                        driver.status = 'withRider';
+                        driver.nodeId = ride.pickupNodeId;
+                        // Calculate dropoff path
+                        const cacheKey = `route_${ride.pickupNodeId}_${ride.dropoffNodeId}`;
+                        let cached = lruCache.get(cacheKey);
+                        if (cached) {
+                            ride.path = cached.path;
+                        } else {
+                            const result = graph.dijkstra(ride.pickupNodeId, trafficTree, closedEdges);
+                            ride.path = graph.reconstructPath(result.prev, ride.dropoffNodeId);
+                            lruCache.put(cacheKey, { dist: result.dist.get(ride.dropoffNodeId) || Infinity,
+                                path: ride.path });
+                        }
+                        ride.pathIndex = 0;
+                        ride.progressOnSegment = 0;
+                        if (ride.path.length === 0) {
+                            // Same node dropoff
+                            ride.dropoffTime = simulationTime;
+                            totalRideTime += 0;
+                            totalRideTimeSamples++;
+                            completedRides.push(ride);
+                            driver.status = 'available';
+                            driver.rideId = null;
+                            driver.nodeId = ride.dropoffNodeId;
+                            driver.x = graph.nodes[ride.dropoffNodeId].x;
+                            driver.y = graph.nodes[ride.dropoffNodeId].y;
+                            driver.currentEdgeId = null;
+                            driver.progressOnEdge = 0;
+                            totalCompletedRides++;
+                        }
+                    } else {
+                        ride.dropoffTime = simulationTime;
+                        totalRideTime += (ride.dropoffTime - ride.pickupTime);
+                        totalRideTimeSamples++;
+                        completedRides.push(ride);
+                        driver.status = 'available';
+                        driver.rideId = null;
+                        driver.nodeId = ride.dropoffNodeId;
+                        driver.x = graph.nodes[ride.dropoffNodeId].x;
+                        driver.y = graph.nodes[ride.dropoffNodeId].y;
+                        driver.currentEdgeId = null;
+                        driver.progressOnEdge = 0;
+                        totalCompletedRides++;
+                    }
+                    continue;
+                }
+
+                const edge = graph.edges[currentSegment.edgeId];
+                const baseDist = edge.baseDist;
+                const trafficFactor = trafficTree.getDensity(currentSegment.edgeId);
+                const effectiveDist = baseDist * trafficFactor;
+                const speed = 120; // pixels per simulation second
+                const travelTime = effectiveDist / speed;
+
+                ride.progressOnSegment += deltaTime / Math.max(0.01, travelTime);
+
+                if (ride.progressOnSegment >= 1.0) {
+                    // Arrived at next node
+                    ride.progressOnSegment = 0;
+                    const arrivedNodeId = currentSegment.to;
+                    driver.nodeId = arrivedNodeId;
+                    driver.x = graph.nodes[arrivedNodeId].x;
+                    driver.y = graph.nodes[arrivedNodeId].y;
+                    ride.pathIndex++;
+
+                    if (ride.pathIndex >= ride.path.length) {
+                        // Segment completed, handle phase transition in next iteration
+                        driver.currentEdgeId = null;
+                        driver.progressOnEdge = 0;
+                    } else {
+                        driver.currentEdgeId = ride.path[ride.pathIndex].edgeId;
+                        driver.progressOnEdge = 0;
+                    }
+                } else {
+                    // Interpolate position on edge
+                    driver.currentEdgeId = currentSegment.edgeId;
+                    driver.progressOnEdge = ride.progressOnSegment;
+                    const fromPos = getNodePosition(currentSegment.from);
+                    const toPos = getNodePosition(currentSegment.to);
+                    driver.x = fromPos.x + (toPos.x - fromPos.x) * ride.progressOnSegment;
+                    driver.y = fromPos.y + (toPos.y - fromPos.y) * ride.progressOnSegment;
+                }
+            }
+
+            // Remove completed rides
+            for (const ride of completedRides) {
+                const idx = activeRides.indexOf(ride);
+                if (idx >= 0) activeRides.splice(idx, 1);
+            }
+
+            // Try to match pending riders
+            const unmatchedRiders = [];
+            for (const rider of riders) {
+                if (!rider.matched) {
+                    const matched = matchRider(rider);
+                    if (!matched) unmatchedRiders.push(rider);
+                }
+            }
+            riders.length = 0;
+            riders.push(...unmatchedRiders);
+        }
+
+        function spawnRider() {
+            let pickupId, dropoffId;
+            do {
+                pickupId = Math.floor(Math.random() * graph.nodes.length);
+                dropoffId = Math.floor(Math.random() * graph.nodes.length);
+            } while (pickupId === dropoffId);
+
+            // Check connectivity with Union-Find
+            if (!currentUF.connected(pickupId, dropoffId)) return null;
+
+            const rider = new Rider(pickupId, dropoffId);
+            riders.push(rider);
+
+            // Try to match immediately
+            matchRider(rider);
+
+            return rider;
+        }
+
+        // ============================================================
+        // RENDERING
+        // ============================================================
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
+
+        function drawMap() {
+            ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            // Draw roads
+            for (let edgeId = 0; edgeId < totalEdges; edgeId++) {
+                const edge = graph.edges[edgeId];
+                const fromNode = graph.nodes[edge.from];
+                const toNode = graph.nodes[edge.to];
+                const density = trafficTree.getDensity(edgeId);
+                const isClosed = closedEdges.has(edgeId);
+
+                ctx.beginPath();
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.lineTo(toNode.x, toNode.y);
+
+                if (isClosed) {
+                    ctx.strokeStyle = '#f87171';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([10, 6]);
+                } else {
+                    // Color based on traffic density
+                    const intensity = Math.min(1, (density - 0.5) / 2.5);
+                    const r = Math.round(40 + intensity * 200);
+                    const g = Math.round(140 - intensity * 100);
+                    const b = Math.round(200 - intensity * 160);
+                    ctx.strokeStyle = `rgb(${r},${g},${b})`;
+                    ctx.lineWidth = 2.5 + intensity * 3;
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // Draw intersections
+            for (const node of graph.nodes) {
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#64748b';
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Draw waiting riders
+            for (const rider of riders) {
+                if (!rider.matched) {
+                    const pos = getNodePosition(rider.pickupNodeId);
+                    // Draw pin
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y - 4, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fill();
+                    ctx.strokeStyle = '#92400e';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    // Pin point
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x - 4, pos.y - 2);
+                    ctx.lineTo(pos.x, pos.y + 8);
+                    ctx.lineTo(pos.x + 4, pos.y - 2);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fill();
+                }
+            }
+
+            // Draw active ride paths
+            for (const ride of activeRides) {
+                if (ride.path.length > 0) {
+                    ctx.beginPath();
+                    const startSeg = ride.path[0];
+                    const startPos = getNodePosition(startSeg.from);
+                    ctx.moveTo(startPos.x, startPos.y);
+                    for (const seg of ride.path) {
+                        const pos = getNodePosition(seg.to);
+                        ctx.lineTo(pos.x, pos.y);
+                    }
+                    ctx.strokeStyle = ride.phase === 'enroute' ?
+                        'rgba(251,146,60,0.5)' : 'rgba(56,189,248,0.5)';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([6, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Draw drivers
+            for (const driver of drivers) {
+                let color;
+                switch (driver.status) {
+                    case 'available':
+                        color = '#4ade80';
+                        break;
+                    case 'enroute':
+                        color = '#fb923c';
+                        break;
+                    case 'withRider':
+                        color = '#38bdf8';
+                        break;
+                    default:
+                        color = '#94a3b8';
+                }
+                ctx.beginPath();
+                ctx.arc(driver.x, driver.y, 9, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+                // Small windshield
+                ctx.beginPath();
+                ctx.arc(driver.x, driver.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.fill();
+            }
+
+            // Highlight searched location
+            if (highlightedNodeId !== null) {
+                const node = graph.nodes[highlightedNodeId];
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 14, 0, Math.PI * 2);
+                ctx.strokeStyle = '#a78bfa';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([4, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                // Pulsing ring
+                const pulse = Math.sin(simulationTime * 4) * 0.4 + 0.6;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 18, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(167,139,250,${pulse})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        let highlightedNodeId = null;
+
+        // ============================================================
+        // UI HANDLERS
+        // ============================================================
+        const searchInput = document.getElementById('search-input');
+        const autocompleteList = document.getElementById('autocomplete-list');
+        const tooltip = document.getElementById('tooltip');
+
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim();
+            if (query.length === 0) {
+                autocompleteList.style.display = 'none';
+                highlightedNodeId = null;
+                return;
+            }
+            const results = trie.searchPrefix(query);
+            if (results.length === 0) {
+                autocompleteList.style.display = 'none';
+            } else {
+                autocompleteList.innerHTML = results
+                    .slice(0, 8)
+                    .map(
+                        (r) =>
+                        `<li data-node-id="${r.id}" data-name="${r.name}">📍 ${r.name} <span style="color:#64748b;font-size:0.7rem;">(${r.row+1},${r.col+1})</span></li>`
+                    )
+                    .join('');
+                autocompleteList.style.display = 'block';
+            }
+        });
+
+        autocompleteList.addEventListener('click', (e) => {
+            const li = e.target.closest('li');
+            if (!li) return;
+            const nodeId = parseInt(li.dataset.nodeId);
+            const name = li.dataset.name;
+            searchInput.value = name;
+            autocompleteList.style.display = 'none';
+            highlightedNodeId = nodeId;
+            // Flash effect
+            setTimeout(() => { if (highlightedNodeId === nodeId) highlightedNodeId = null; }, 4000);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!autocompleteList.contains(e.target) && e.target !== searchInput) {
+                autocompleteList.style.display = 'none';
+            }
+        });
+
+        // Canvas click for road closures
+        canvas.addEventListener('click', (e) => {
+            if (!closureMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            // Find nearest road segment
+            let closestEdgeId = null;
+            let closestDist = 15; // threshold in pixels
+            for (let edgeId = 0; edgeId < totalEdges; edgeId++) {
+                const edge = graph.edges[edgeId];
+                const fromNode = graph.nodes[edge.from];
+                const toNode = graph.nodes[edge.to];
+                const dist = pointToSegmentDist(mx, my, fromNode.x, fromNode.y, toNode.x, toNode.y);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestEdgeId = edgeId;
+                }
+            }
+            if (closestEdgeId !== null) {
+                if (closedEdges.has(closestEdgeId)) {
+                    closedEdges.delete(closestEdgeId);
+                } else {
+                    closedEdges.add(closestEdgeId);
+                }
+                currentUF = rebuildUnionFind();
+                lruCache.clear(); // Invalidate cached routes
+                // Re-route active rides if their path uses a newly closed road
+                for (const ride of activeRides) {
+                    const hasClosedSegment = ride.path.some(seg => closedEdges.has(seg.edgeId));
+                    if (hasClosedSegment) {
+                        const driver = drivers.find(d => d.id === ride.driverId);
+                        if (driver) {
+                            const targetNodeId = ride.phase === 'enroute' ? ride.pickupNodeId : ride
+                                .dropoffNodeId;
+                            const result = graph.dijkstra(driver.nodeId, trafficTree, closedEdges);
+                            ride.path = graph.reconstructPath(result.prev, targetNodeId);
+                            ride.pathIndex = 0;
+                            ride.progressOnSegment = 0;
+                        }
+                    }
+                }
+            }
+        });
+
+        function pointToSegmentDist(px, py, ax, ay, bx, by) {
+            const dx = bx - ax;
+            const dy = by - ay;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+            let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const closestX = ax + t * dx;
+            const closestY = ay + t * dy;
+            return Math.hypot(px - closestX, py - closestY);
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            // Check hover over intersections
+            let hoveredNode = null;
+            for (const node of graph.nodes) {
+                if (Math.hypot(mx - node.x, my - node.y) < 12) {
+                    hoveredNode = node;
+                    break;
+                }
+            }
+            if (hoveredNode) {
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 16) + 'px';
+                tooltip.style.top = (e.clientY - 30) + 'px';
+                tooltip.textContent = hoveredNode.name;
+                canvas.style.cursor = 'pointer';
+            } else if (closureMode) {
+                // Check hover over roads
+                let nearRoad = false;
+                for (let edgeId = 0; edgeId < totalEdges; edgeId++) {
+                    const edge = graph.edges[edgeId];
+                    const fromNode = graph.nodes[edge.from];
+                    const toNode = graph.nodes[edge.to];
+                    if (pointToSegmentDist(mx, my, fromNode.x, fromNode.y, toNode.x, toNode.y) < 12) {
+                        nearRoad = true;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (e.clientX + 16) + 'px';
+                        tooltip.style.top = (e.clientY - 30) + 'px';
+                        tooltip.textContent = closedEdges.has(edgeId) ? '🔒 Closed - Click to reopen' :
+                            '🛣️ Click to close road';
+                        break;
+                    }
+                }
+                if (!nearRoad) {
+                    tooltip.style.display = 'none';
+                }
+                canvas.style.cursor = nearRoad ? 'pointer' : 'crosshair';
+            } else {
+                tooltip.style.display = 'none';
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        // Buttons
+        document.getElementById('btn-add-driver').addEventListener('click', () => {
+            const randomNodeId = Math.floor(Math.random() * graph.nodes.length);
+            const driver = new Driver(randomNodeId);
+            driver.x = graph.nodes[randomNodeId].x;
+            driver.y = graph.nodes[randomNodeId].y;
+            drivers.push(driver);
+        });
+
+        document.getElementById('btn-spawn-rider').addEventListener('click', () => {
+            spawnRider();
+        });
+
+        document.getElementById('btn-toggle-closure').addEventListener('click', function() {
+            closureMode = !closureMode;
+            this.textContent = closureMode ? '🛑 Closure Mode: ON (click roads)' :
+                '🛑 Toggle Road Closure Mode';
+            this.classList.toggle('danger', closureMode);
+            if (!closureMode) tooltip.style.display = 'none';
+            canvas.style.cursor = closureMode ? 'crosshair' : 'default';
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            drivers.length = 0;
+            riders.length = 0;
+            activeRides.length = 0;
+            closedEdges.clear();
+            trafficTree.reset();
+            lruCache.clear();
+            currentUF = rebuildUnionFind();
+            totalCompletedRides = 0;
+            totalWaitTime = 0;
+            totalRideTime = 0;
+            totalRideTimeSamples = 0;
+            simulationTime = 0;
+            highlightedNodeId = null;
+            closureMode = false;
+            document.getElementById('btn-toggle-closure').textContent = '🛑 Toggle Road Closure Mode';
+            document.getElementById('btn-toggle-closure').classList.remove('danger');
+            createInitialDrivers(8);
+            canvas.style.cursor = 'default';
+            tooltip.style.display = 'none';
+        });
+
+        // Sliders
+        const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-label');
+        const spawnRateSlider = document.getElementById('spawn-rate-slider');
+        const spawnRateLabel = document.getElementById('spawn-rate-label');
+
+        speedSlider.addEventListener('input', () => {
+            speedLabel.textContent = speedSlider.value + 'x';
+            updateSpawnInterval();
+        });
+        spawnRateSlider.addEventListener('input', () => {
+            spawnRateLabel.textContent = spawnRateSlider.value + '/min';
+            updateSpawnInterval();
+        });
+
+        function updateSpawnInterval() {
+            if (spawnIntervalId) clearInterval(spawnIntervalId);
+            const ratePerMin = parseInt(spawnRateSlider.value);
+            const intervalMs = (60 / ratePerMin) * 1000;
+            spawnIntervalId = setInterval(() => {
+                spawnRider();
+            }, intervalMs);
+        }
+
+        // ============================================================
+        // MAIN LOOP
+        // ============================================================
+        function getSimSpeed() {
+            return parseFloat(speedSlider.value);
+        }
+
+        let lastFrameTime = performance.now();
+
+        function gameLoop(timestamp) {
+            const rawDelta = (timestamp - lastFrameTime) / 1000; // real seconds
+            lastFrameTime = timestamp;
+            const simDelta = rawDelta * getSimSpeed();
+
+            updateSimulation(simDelta);
+            drawMap();
+            updateDashboard();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateDashboard() {
+            const availableDrivers = drivers.filter(d => d.status === 'available').length;
+            const activeDrivers = drivers.filter(d => d.status !== 'available').length;
+            const pendingRiders = riders.filter(r => !r.matched).length;
+            const totalDrivers = drivers.length;
+            const utilRate = totalDrivers > 0 ?
+                (drivers.reduce((sum, d) => sum + (d.totalActiveTime > 0 ? d.totalBusyTime / d.totalActiveTime : 0),
+                    0) / totalDrivers * 100) :
+                0;
+
+            document.getElementById('stat-completed').textContent = totalCompletedRides;
+            document.getElementById('stat-wait').textContent = totalCompletedRides > 0 ?
+                (totalWaitTime / totalCompletedRides).toFixed(1) + 's' :
+                '—';
+            document.getElementById('stat-ride').textContent = totalRideTimeSamples > 0 ?
+                (totalRideTime / totalRideTimeSamples).toFixed(1) + 's' :
+                '—';
+            document.getElementById('stat-util').textContent = utilRate.toFixed(1) + '%';
+            document.getElementById('stat-active-drivers').textContent = activeDrivers;
+            document.getElementById('stat-available').textContent = availableDrivers;
+            document.getElementById('stat-pending').textContent = pendingRiders;
+            document.getElementById('stat-cache-hit').textContent = lruCache.hitRate().toFixed(1) + '%';
+            document.getElementById('stat-closed-roads').textContent = closedEdges.size;
+
+            // Update active rides list
+            const ridesList = document.getElementById('active-rides-list');
+            if (activeRides.length === 0 && pendingRiders === 0) {
+                ridesList.innerHTML = '<span style="color:var(--text-secondary);">No active rides...</span>';
+            } else {
+                ridesList.innerHTML = activeRides.map(r => {
+                    const driver = drivers.find(d => d.id === r.driverId);
+                    const pickupName = graph.nodes[r.pickupNodeId].name;
+                    const dropoffName = graph.nodes[r.dropoffNodeId].name;
+                    const phaseBadge = r.phase === 'enroute' ?
+                        '<span class="badge badge-enroute">En Route</span>' :
+                        '<span class="badge badge-busy">With Rider</span>';
+                    return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                ${phaseBadge} Driver #${r.driverId} → <b>${pickupName}</b> to <b>${dropoffName}</b>
+                <span style="color:#64748b;font-size:0.7rem;">(${r.path.length} segments remaining)</span>
+              </div>`;
+                }).join('');
+                if (riders.filter(r => !r.matched).length > 0) {
+                    ridesList.innerHTML +=
+                        `<div style="color:#fbbf24;font-size:0.75rem;padding:4px 0;">⏳ ${riders.filter(r=>!r.matched).length} rider(s) waiting for driver...</div>`;
+                }
+            }
+        }
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        function init() {
+            createInitialDrivers(8);
+            updateSpawnInterval();
+            // Spawn a few initial riders
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => spawnRider(), i * 500);
+            }
+            lastFrameTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        init();
+
+        console.log('🚗 Ride-Sharing Platform Simulator Ready');
+        console.log('📊 Data Structures Active:');
+        console.log('  - Graph: ' + graph.nodes.length + ' nodes, ' + totalEdges + ' edges');
+        console.log('  - Trie: ' + allIntersections.length + ' location names indexed');
+        console.log('  - Fenwick Tree: ' + totalEdges + ' road segments tracked');
+        console.log('  - LRU Cache: 200 entry capacity');
+        console.log('  - Union-Find: ' + graph.nodes.length + ' elements');
+        console.log('  - Min-Heap: Dynamic driver matching');
+        console.log('  - Dijkstra: O((V+E) log V) route calculation');
+        console.log('💡 Click roads in closure mode to test Union-Find connectivity');
+        console.log('🔍 Use search to test Trie autocomplete');
+    </script>
+</body>
+</html>
