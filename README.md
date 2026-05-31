@@ -2,7 +2,6 @@
 
 A comprehensive single‑page web application that simulates a dynamic ride‑sharing service in a city grid. It efficiently matches riders with drivers using advanced data structures and algorithms, visualises the road network with real‑time traffic, and provides live analytics—all running in the browser.
 
-![Ride-Sharing Simulator Screenshot](screenshot.png) <!-- Replace with an actual screenshot if available -->
 
 ## 🚀 Features
 
